@@ -6,14 +6,14 @@ function FeatureVec = BlockFeat(Img,Filter)
     end
     SampleSize = size(Img);
     
-    FilterBank = {'db5','db4','db3'};
+    FilterBank = {'db2','db2','db2'};
     if nargin < 2
         Filter = FilterBank;
     end
     FeatureVec = zeros([1,21],'double');
-    [L1LL, L1LH, L1HL, ~] = dwt2(Img,string(Filter(1)));
-    [L2LL,L2LH,L2HL,~] = dwt2(L1LL,string(Filter(2)));
-    [L3LL,L3LH,L3HL,~] = dwt2(L2LL,string(Filter(3)));
+    [L1LL, L1LH, L1HL, L1HH] = dwt2(Img,string(Filter(1)));
+    [L2LL,L2LH,L2HL,L2HH] = dwt2(L1LL,string(Filter(2)));
+    [L3LL,L3LH,L3HL,L3HH] = dwt2(L2LL,string(Filter(3)));
     % Obtain M1,M2,M3
     M1s = (L1LH.*L1LH + L1HL.*L1HL).^0.5;
     M2s = (L2LH.*L2LH + L2HL.*L2HL).^0.5;
@@ -48,16 +48,16 @@ function FeatureVec = BlockFeat(Img,Filter)
     LRI3 = (L3LL - L3LLmin).*(Max/L3LLmax - L3LLmin);
     
     %%Obtain Features filters hyperparameters need to be adjusted
-    h1 = fspecial('log',3,1);
+    h1 = fspecial('log',3,2);
     h2 = fspecial('laplacian',0);
-    h3 = fspecial('gaussian',3,1);
+    h3 = fspecial('gaussian',3,5);
 
     %May use imfilter(LRI1,h,'full');
-    LLfilter1 = imfilter(LRI1,h1,'same');
-    LLfilter2 = imfilter(LRI1,h2,'same');
-    LLfilter3 = imfilter(LRI1,h3,'same');
+    LLfilter1 = conv2(LRI1,h1,'valid');
+    LLfilter2 = conv2(LRI1,h2,'valid');
+    LLfilter3 = conv2(LRI1,h3,'valid');
     LLfilter4 = stdfilt(LRI1);
-    LRISize = size(LLfilter1,1) * size(LLfilter1,2);
+    LRISize = Max/4;
     
     FeatureVec(1) = norm(LLfilter1,1)/LRISize;
     FeatureVec(2) = norm(LLfilter2,1)/LRISize;
@@ -67,7 +67,7 @@ function FeatureVec = BlockFeat(Img,Filter)
     FeatureVec(6) = std(LLfilter2,1,"all");
     FeatureVec(7) = std(LLfilter3,1,"all");
     FeatureVec(8) = std(LLfilter4,1,"all");
-    FeatureVec(9) = graythresh(LLfilter1);
+    FeatureVec(9) = graythresh(LLfilter1);%Add a max scalar
     
     % From M1
     FeatureVec(10) = graythresh(M1)*norm(M1,1)/(LRISize);
@@ -82,7 +82,7 @@ function FeatureVec = BlockFeat(Img,Filter)
     FeatureVec(15) = entropy(reshape(M3./Max,[1,size(M3,1)*size(M3,2)]));
     
     % From LRI1
-    FeatureVec(16) = graythresh(LRI1)*norm(LRI1,1)/(LRISize*Max);
+    FeatureVec(16) = graythresh(LRI1)*norm(LRI1,1)/(Max/4);
     FeatureVec(19) = entropy(reshape(LRI1./Max,[1,size(LRI1,1)*size(LRI1,2)]));
     
     % From LRI2
